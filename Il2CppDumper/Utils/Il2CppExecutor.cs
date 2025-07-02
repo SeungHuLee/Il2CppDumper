@@ -37,25 +37,6 @@ namespace Il2CppDumper
         {
             this.metadata = metadata;
             this.il2Cpp = il2Cpp;
-
-            if (il2Cpp.Version >= 27 && il2Cpp.Version < 29)
-            {
-                customAttributeGenerators = new ulong[metadata.imageDefs.Sum(x => x.customAttributeCount)];
-                foreach (var imageDef in metadata.imageDefs)
-                {
-                    var imageDefName = metadata.GetStringFromIndex(imageDef.nameIndex);
-                    var codeGenModule = il2Cpp.codeGenModules[imageDefName];
-                    if (imageDef.customAttributeCount > 0)
-                    {
-                        var pointers = il2Cpp.ReadClassArray<ulong>(il2Cpp.MapVATR(codeGenModule.customAttributeCacheGenerator), imageDef.customAttributeCount);
-                        pointers.CopyTo(customAttributeGenerators, imageDef.customAttributeStart);
-                    }
-                }
-            }
-            else if (il2Cpp.Version < 27)
-            {
-                customAttributeGenerators = il2Cpp.customAttributeGenerators;
-            }
         }
 
         public string GetTypeName(Il2CppType il2CppType, bool addNamespace, bool is_nested)

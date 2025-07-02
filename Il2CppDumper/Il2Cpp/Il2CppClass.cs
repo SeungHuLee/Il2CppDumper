@@ -1,96 +1,101 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 
 namespace Il2CppDumper
 {
+    [StructLayout(LayoutKind.Explicit)]
     public class Il2CppCodeRegistration
     {
-        [Version(Max = 24.1)]
-        public ulong methodPointersCount;
-        [Version(Max = 24.1)]
-        public ulong methodPointers;
-        [Version(Max = 21)]
-        public ulong delegateWrappersFromNativeToManagedCount;
-        [Version(Max = 21)]
-        public ulong delegateWrappersFromNativeToManaged; // note the double indirection to handle different calling conventions
-        [Version(Min = 22)]
-        public ulong reversePInvokeWrapperCount;
-        [Version(Min = 22)]
-        public ulong reversePInvokeWrappers;
-        [Version(Max = 22)]
-        public ulong delegateWrappersFromManagedToNativeCount;
-        [Version(Max = 22)]
-        public ulong delegateWrappersFromManagedToNative;
-        [Version(Max = 22)]
-        public ulong marshalingFunctionsCount;
-        [Version(Max = 22)]
-        public ulong marshalingFunctions;
-        [Version(Min = 21, Max = 22)]
-        public ulong ccwMarshalingFunctionsCount;
-        [Version(Min = 21, Max = 22)]
-        public ulong ccwMarshalingFunctions;
-        public ulong genericMethodPointersCount;
-        public ulong genericMethodPointers;
-        [Version(Min = 24.5, Max = 24.5)]
-        [Version(Min = 27.1)]
-        public ulong genericAdjustorThunks;
-        public ulong invokerPointersCount;
-        public ulong invokerPointers;
-        [Version(Max = 24.5)]
-        public ulong customAttributeCount;
-        [Version(Max = 24.5)]
-        public ulong customAttributeGenerators;
-        [Version(Min = 21, Max = 22)]
-        public ulong guidCount;
-        [Version(Min = 21, Max = 22)]
-        public ulong guids; // Il2CppGuid
-        [Version(Min = 22)]
-        public ulong unresolvedVirtualCallCount; //29.1 unresolvedIndirectCallCount;
-        [Version(Min = 22)]
-        public ulong unresolvedVirtualCallPointers;
-        [Version(Min = 29.1)]
-        public ulong unresolvedInstanceCallPointers;
-        [Version(Min = 29.1)]
-        public ulong unresolvedStaticCallPointers;
-        [Version(Min = 23)]
-        public ulong interopDataCount;
-        [Version(Min = 23)]
-        public ulong interopData;
-        [Version(Min = 24.3)]
-        public ulong windowsRuntimeFactoryCount;
-        [Version(Min = 24.3)]
-        public ulong windowsRuntimeFactoryTable;
-        [Version(Min = 24.2)]
-        public ulong codeGenModulesCount;
-        [Version(Min = 24.2)]
-        public ulong codeGenModules;
+        [FieldOffset(0)] public uint reversePInvokeWrapperCount;
+        [FieldOffset(4)] public uint padding0;
+        [FieldOffset(8)] public ulong reversePInvokeWrappers;           // Il2CppMethodPointer* -> ulong
+
+        [FieldOffset(16)] public uint genericMethodPointersCount;
+        [FieldOffset(20)] public uint padding1;
+        [FieldOffset(24)] public ulong genericMethodPointers;            // Il2CppMethodPointer* -> ulong
+        [FieldOffset(32)] public ulong genericAdjustorThunks;            // Il2CppMethodPointer* -> ulong
+
+        [FieldOffset(40)] public uint invokerPointersCount;
+        [FieldOffset(44)] public uint padding2;
+        [FieldOffset(48)] public ulong invokerPointers;                  // InvokerMethod* -> ulong
+
+        [FieldOffset(56)] public uint unresolvedVirtualCallCount;
+        [FieldOffset(60)] public uint padding3;
+        [FieldOffset(64)] public ulong unresolvedVirtualCallPointers;    // Il2CppMethodPointer* -> ulong
+
+        [FieldOffset(72)] public uint interopDataCount;
+        [FieldOffset(76)] public uint padding4;
+        [FieldOffset(84)] public ulong interopData;                      // Il2CppInteropData* -> ulong
+
+        [FieldOffset(92)] public uint windowsRuntimeFactoryCount;
+        [FieldOffset(96)] public uint padding5;
+        [FieldOffset(100)] public ulong windowsRuntimeFactoryTable;       // Il2CppWindowsRuntimeFactoryTableEntry* -> ulong
+
+        [FieldOffset(108)] public uint codeGenModulesCount;
+        [FieldOffset(112)] public uint padding6;
+        [FieldOffset(116)] public ulong codeGenModules;                   // Il2CppCodeGenModule** -> ulong
     }
 
+    [StructLayout(LayoutKind.Explicit)]
+    public class Il2CppCodeGenModule
+    {
+        [FieldOffset(0)] public ulong moduleName;                          // const char* -> ulong
+        [FieldOffset(8)] public uint methodPointerCount;
+        [FieldOffset(12)] public uint padding0;
+        [FieldOffset(16)] public ulong methodPointers;                      // const Il2CppMethodPointer* -> ulong
+        [FieldOffset(24)] public uint adjustorThunkCount;
+        [FieldOffset(28)] public uint padding1;
+        [FieldOffset(32)] public ulong adjustorThunks;                      // const Il2CppTokenAdjustorThunkPair* -> ulong
+        [FieldOffset(40)] public ulong invokerIndices;                      // const int32_t* -> ulong
+        [FieldOffset(48)] public uint reversePInvokeWrapperCount;
+        [FieldOffset(52)] public uint padding2;
+        [FieldOffset(56)] public ulong reversePInvokeWrapperIndices;        // const Il2CppTokenIndexMethodTuple* -> ulong
+        [FieldOffset(64)] public uint rgctxRangesCount;
+        [FieldOffset(68)] public uint padding3;
+        [FieldOffset(72)] public ulong rgctxRanges;                         // const Il2CppTokenRangePair* -> ulong
+        [FieldOffset(80)] public uint rgctxsCount;
+        [FieldOffset(84)] public uint padding4;
+        [FieldOffset(88)] public ulong rgctxs;                              // const Il2CppRGCTXDefinition* -> ulong
+        [FieldOffset(96)] public ulong debuggerMetadata;                    // const Il2CppDebuggerMetadataRegistration* -> ulong
+        [FieldOffset(114)] public ulong moduleInitializer;                   // const Il2CppMethodPointer -> ulong
+        [FieldOffset(122)] public ulong staticConstructorTypeIndices;        // TypeDefinitionIndex* -> ulong
+        [FieldOffset(130)] public ulong metadataRegistration;                // const Il2CppMetadataRegistration* -> ulong
+        [FieldOffset(138)] public ulong codeRegistaration;                   // const Il2CppCodeRegistration* -> ulong
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
     public class Il2CppMetadataRegistration
     {
-        public long genericClassesCount;
-        public ulong genericClasses;
-        public long genericInstsCount;
-        public ulong genericInsts;
-        public long genericMethodTableCount;
-        public ulong genericMethodTable;
-        public long typesCount;
-        public ulong types;
-        public long methodSpecsCount;
-        public ulong methodSpecs;
-        [Version(Max = 16)]
-        public long methodReferencesCount;
-        [Version(Max = 16)]
-        public ulong methodReferences;
+        [FieldOffset(0)] public int genericClassesCount;
+        [FieldOffset(4)] public int padding0;
+        [FieldOffset(8)] public ulong genericClasses;              // Il2CppGenericClass** -> ulong
 
-        public long fieldOffsetsCount;
-        public ulong fieldOffsets;
+        [FieldOffset(16)] public int genericInstsCount;
+        [FieldOffset(20)] public int padding1;
+        [FieldOffset(24)] public ulong genericInsts;                // Il2CppGenericInst** -> ulong
 
-        public long typeDefinitionsSizesCount;
-        public ulong typeDefinitionsSizes;
-        [Version(Min = 19)]
-        public ulong metadataUsagesCount;
-        [Version(Min = 19)]
-        public ulong metadataUsages;
+        [FieldOffset(32)] public int genericMethodTableCount;
+        [FieldOffset(36)] public int padding2;
+        [FieldOffset(40)] public ulong genericMethodTable;          // Il2CppGenericMethodFunctionsDefinitions* -> ulong
+
+        [FieldOffset(48)] public int typesCount;
+        [FieldOffset(52)] public int padding3;
+        [FieldOffset(56)] public ulong types;                       // Il2CppType** -> ulong
+
+        [FieldOffset(64)] public int methodSpecsCount;
+        [FieldOffset(68)] public int padding4;
+        [FieldOffset(72)] public ulong methodSpecs;                 // Il2CppMethodSpec* -> ulong
+
+        [FieldOffset(80)] public int fieldOffsetsCount;
+        [FieldOffset(84)] public int padding5;
+        [FieldOffset(88)] public ulong fieldOffsets;                // int32_t** -> ulong
+
+        [FieldOffset(96)] public int typeDefinitionsSizesCount;
+        [FieldOffset(100)] public int padding6;
+        [FieldOffset(104)] public ulong typeDefinitionsSizes;        // Il2CppTypeDefinitionSizes** -> ulong
+
+        [FieldOffset(112)] public ulong metadataUsagesCount;         // size_t -> ulong (safe for both 32/64 bit)
+        [FieldOffset(120)] public ulong metadataUsages;              // void*** -> ulong
     }
 
     public enum Il2CppTypeEnum
@@ -257,37 +262,6 @@ namespace Il2CppDumper
         public int classIndexIndex;
         public int methodIndexIndex;
     };
-
-    public class Il2CppCodeGenModule
-    {
-        public ulong moduleName;
-        public long methodPointerCount;
-        public ulong methodPointers;
-        [Version(Min = 24.5, Max = 24.5)]
-        [Version(Min = 27.1)]
-        public long adjustorThunkCount;
-        [Version(Min = 24.5, Max = 24.5)]
-        [Version(Min = 27.1)]
-        public ulong adjustorThunks;
-        public ulong invokerIndices;
-        public ulong reversePInvokeWrapperCount;
-        public ulong reversePInvokeWrapperIndices;
-        public long rgctxRangesCount;
-        public ulong rgctxRanges;
-        public long rgctxsCount;
-        public ulong rgctxs;
-        public ulong debuggerMetadata;
-        [Version(Min = 27, Max = 27.2)]
-        public ulong customAttributeCacheGenerator;
-        [Version(Min = 27)]
-        public ulong moduleInitializer;
-        [Version(Min = 27)]
-        public ulong staticConstructorTypeIndices;
-        [Version(Min = 27)]
-        public ulong metadataRegistration; // Per-assembly mode only
-        [Version(Min = 27)]
-        public ulong codeRegistaration; // Per-assembly mode only
-    }
 
     public class Il2CppRange
     {

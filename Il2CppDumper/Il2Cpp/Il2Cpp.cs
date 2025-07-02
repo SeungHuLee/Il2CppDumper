@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace Il2CppDumper
 {
@@ -25,7 +24,7 @@ namespace Il2CppDumper
         public Il2CppMethodSpec[] methodSpecs;
         public Dictionary<int, List<Il2CppMethodSpec>> methodDefinitionMethodSpecs = new();
         public Dictionary<Il2CppMethodSpec, ulong> methodSpecGenericMethodPointers = new();
-        private bool fieldOffsetsArePointers;
+        private bool fieldOffsetsArePointers = true;
         protected long metadataUsagesCount;
         public Dictionary<string, Il2CppCodeGenModule> codeGenModules;
         public Dictionary<string, ulong[]> codeGenModuleMethodPointers;
@@ -50,63 +49,6 @@ namespace Il2CppDumper
 
         protected bool AutoPlusInit(ulong codeRegistration, ulong metadataRegistration)
         {
-            if (codeRegistration != 0)
-            {
-                var limit = this is WebAssemblyMemory ? 0x35000u : 0x50000u; //TODO
-                if (Version >= 24.2)
-                {
-                    pCodeRegistration = MapVATR<Il2CppCodeRegistration>(codeRegistration);
-                    if (Version == 31)
-                    {
-                        if (pCodeRegistration.genericMethodPointersCount > limit)
-                        {
-                            codeRegistration -= PointerSize * 2;
-                        }
-                        else
-                        {
-                            Version = 29;
-                            Console.WriteLine($"Change il2cpp version to: {Version}");
-                        }
-                    }
-                    if (Version == 29)
-                    {
-                        if (pCodeRegistration.genericMethodPointersCount > limit)
-                        {
-                            Version = 29.1;
-                            codeRegistration -= PointerSize * 2;
-                            Console.WriteLine($"Change il2cpp version to: {Version}");
-                        }
-                    }
-                    if (Version == 27)
-                    {
-                        if (pCodeRegistration.reversePInvokeWrapperCount > limit)
-                        {
-                            Version = 27.1;
-                            codeRegistration -= PointerSize;
-                            Console.WriteLine($"Change il2cpp version to: {Version}");
-                        }
-                    }
-                    if (Version == 24.4)
-                    {
-                        codeRegistration -= PointerSize * 2;
-                        if (pCodeRegistration.reversePInvokeWrapperCount > limit)
-                        {
-                            Version = 24.5;
-                            codeRegistration -= PointerSize;
-                            Console.WriteLine($"Change il2cpp version to: {Version}");
-                        }
-                    }
-                    if (Version == 24.2)
-                    {
-                        if (pCodeRegistration.interopDataCount == 0) //TODO
-                        {
-                            Version = 24.3;
-                            codeRegistration -= PointerSize * 2;
-                            Console.WriteLine($"Change il2cpp version to: {Version}");
-                        }
-                    }
-                }
-            }
             Console.WriteLine("CodeRegistration : {0:x}", codeRegistration);
             Console.WriteLine("MetadataRegistration : {0:x}", metadataRegistration);
             if (codeRegistration != 0 && metadataRegistration != 0)
@@ -120,77 +62,25 @@ namespace Il2CppDumper
         public virtual void Init(ulong codeRegistration, ulong metadataRegistration)
         {
             pCodeRegistration = MapVATR<Il2CppCodeRegistration>(codeRegistration);
-            var limit = this is WebAssemblyMemory ? 0x35000u : 0x50000u; //TODO
-            if (Version == 27 && pCodeRegistration.invokerPointersCount > limit)
-            {
-                Version = 27.1;
-                Console.WriteLine($"Change il2cpp version to: {Version}");
-                pCodeRegistration = MapVATR<Il2CppCodeRegistration>(codeRegistration);
-            }
-            if (Version == 27.1)
-            {
-                var pCodeGenModules = MapVATR<ulong>(pCodeRegistration.codeGenModules, pCodeRegistration.codeGenModulesCount);
-                foreach (var pCodeGenModule in pCodeGenModules)
-                {
-                    var codeGenModule = MapVATR<Il2CppCodeGenModule>(pCodeGenModule);
-                    if (codeGenModule.rgctxsCount > 0)
-                    {
-                        var rgctxs = MapVATR<Il2CppRGCTXDefinition>(codeGenModule.rgctxs, codeGenModule.rgctxsCount);
-                        if (rgctxs.All(x => x.data.rgctxDataDummy > limit))
-                        {
-                            Version = 27.2;
-                            Console.WriteLine($"Change il2cpp version to: {Version}");
-                        }
-                        break;
-                    }
-                }
-            }
-            if (Version == 24.4 && pCodeRegistration.invokerPointersCount > limit)
-            {
-                Version = 24.5;
-                Console.WriteLine($"Change il2cpp version to: {Version}");
-                pCodeRegistration = MapVATR<Il2CppCodeRegistration>(codeRegistration);
-            }
-            if (Version == 24.2 && pCodeRegistration.codeGenModules == 0) //TODO
-            {
-                Version = 24.3;
-                Console.WriteLine($"Change il2cpp version to: {Version}");
-                pCodeRegistration = MapVATR<Il2CppCodeRegistration>(codeRegistration);
-            }
             pMetadataRegistration = MapVATR<Il2CppMetadataRegistration>(metadataRegistration);
             genericMethodPointers = MapVATR<ulong>(pCodeRegistration.genericMethodPointers, pCodeRegistration.genericMethodPointersCount);
             invokerPointers = MapVATR<ulong>(pCodeRegistration.invokerPointers, pCodeRegistration.invokerPointersCount);
-            if (Version < 27)
+
+            if (pCodeRegistration.reversePInvokeWrapperCount != 0)
             {
-                customAttributeGenerators = MapVATR<ulong>(pCodeRegistration.customAttributeGenerators, pCodeRegistration.customAttributeCount);
+                reversePInvokeWrappers = MapVATR<ulong>(pCodeRegistration.reversePInvokeWrappers, pCodeRegistration.reversePInvokeWrapperCount);
             }
-            if (Version > 16 && Version < 27)
+
+            if (pCodeRegistration.unresolvedVirtualCallCount != 0)
             {
-                metadataUsages = MapVATR<ulong>(pMetadataRegistration.metadataUsages, metadataUsagesCount);
+                unresolvedVirtualCallPointers = MapVATR<ulong>(pCodeRegistration.unresolvedVirtualCallPointers, pCodeRegistration.unresolvedVirtualCallCount);
             }
-            if (Version >= 22)
-            {
-                if (pCodeRegistration.reversePInvokeWrapperCount != 0)
-                    reversePInvokeWrappers = MapVATR<ulong>(pCodeRegistration.reversePInvokeWrappers, pCodeRegistration.reversePInvokeWrapperCount);
-                if (pCodeRegistration.unresolvedVirtualCallCount != 0)
-                    unresolvedVirtualCallPointers = MapVATR<ulong>(pCodeRegistration.unresolvedVirtualCallPointers, pCodeRegistration.unresolvedVirtualCallCount);
-            }
+
             genericInstPointers = MapVATR<ulong>(pMetadataRegistration.genericInsts, pMetadataRegistration.genericInstsCount);
             genericInsts = Array.ConvertAll(genericInstPointers, MapVATR<Il2CppGenericInst>);
-            fieldOffsetsArePointers = Version > 21;
-            if (Version == 21)
-            {
-                var fieldTest = MapVATR<uint>(pMetadataRegistration.fieldOffsets, 6);
-                fieldOffsetsArePointers = fieldTest[0] == 0 && fieldTest[1] == 0 && fieldTest[2] == 0 && fieldTest[3] == 0 && fieldTest[4] == 0 && fieldTest[5] > 0;
-            }
-            if (fieldOffsetsArePointers)
-            {
-                fieldOffsets = MapVATR<ulong>(pMetadataRegistration.fieldOffsets, pMetadataRegistration.fieldOffsetsCount);
-            }
-            else
-            {
-                fieldOffsets = Array.ConvertAll(MapVATR<uint>(pMetadataRegistration.fieldOffsets, pMetadataRegistration.fieldOffsetsCount), x => (ulong)x);
-            }
+
+            fieldOffsets = MapVATR<ulong>(pMetadataRegistration.fieldOffsets, pMetadataRegistration.fieldOffsetsCount);
+
             var pTypes = MapVATR<ulong>(pMetadataRegistration.types, pMetadataRegistration.typesCount);
             types = new Il2CppType[pMetadataRegistration.typesCount];
             for (var i = 0; i < pMetadataRegistration.typesCount; ++i)
@@ -199,47 +89,42 @@ namespace Il2CppDumper
                 types[i].Init(Version);
                 typeDic.Add(pTypes[i], types[i]);
             }
-            if (Version >= 24.2)
-            {
-                var pCodeGenModules = MapVATR<ulong>(pCodeRegistration.codeGenModules, pCodeRegistration.codeGenModulesCount);
-                codeGenModules = new Dictionary<string, Il2CppCodeGenModule>(pCodeGenModules.Length, StringComparer.Ordinal);
-                codeGenModuleMethodPointers = new Dictionary<string, ulong[]>(pCodeGenModules.Length, StringComparer.Ordinal);
-                rgctxsDictionary = new Dictionary<string, Dictionary<uint, Il2CppRGCTXDefinition[]>>(pCodeGenModules.Length, StringComparer.Ordinal);
-                foreach (var pCodeGenModule in pCodeGenModules)
-                {
-                    var codeGenModule = MapVATR<Il2CppCodeGenModule>(pCodeGenModule);
-                    var moduleName = ReadStringToNull(MapVATR(codeGenModule.moduleName));
-                    codeGenModules.Add(moduleName, codeGenModule);
-                    ulong[] methodPointers;
-                    try
-                    {
-                        methodPointers = MapVATR<ulong>(codeGenModule.methodPointers, codeGenModule.methodPointerCount);
-                    }
-                    catch
-                    {
-                        methodPointers = new ulong[codeGenModule.methodPointerCount];
-                    }
-                    codeGenModuleMethodPointers.Add(moduleName, methodPointers);
 
-                    var rgctxsDefDictionary = new Dictionary<uint, Il2CppRGCTXDefinition[]>();
-                    rgctxsDictionary.Add(moduleName, rgctxsDefDictionary);
-                    if (codeGenModule.rgctxsCount > 0)
+            var pCodeGenModules = MapVATR<ulong>(pCodeRegistration.codeGenModules, pCodeRegistration.codeGenModulesCount);
+            codeGenModules = new Dictionary<string, Il2CppCodeGenModule>(pCodeGenModules.Length, StringComparer.Ordinal);
+            codeGenModuleMethodPointers = new Dictionary<string, ulong[]>(pCodeGenModules.Length, StringComparer.Ordinal);
+            rgctxsDictionary = new Dictionary<string, Dictionary<uint, Il2CppRGCTXDefinition[]>>(pCodeGenModules.Length, StringComparer.Ordinal);
+            foreach (var pCodeGenModule in pCodeGenModules)
+            {
+                var codeGenModule = MapVATR<Il2CppCodeGenModule>(pCodeGenModule);
+                var moduleName = ReadStringToNull(MapVATR(codeGenModule.moduleName));
+                codeGenModules.Add(moduleName, codeGenModule);
+                ulong[] methodPointers;
+                try
+                {
+                    methodPointers = MapVATR<ulong>(codeGenModule.methodPointers, codeGenModule.methodPointerCount);
+                }
+                catch
+                {
+                    methodPointers = new ulong[codeGenModule.methodPointerCount];
+                }
+                codeGenModuleMethodPointers.Add(moduleName, methodPointers);
+
+                var rgctxsDefDictionary = new Dictionary<uint, Il2CppRGCTXDefinition[]>();
+                rgctxsDictionary.Add(moduleName, rgctxsDefDictionary);
+                if (codeGenModule.rgctxsCount > 0)
+                {
+                    var rgctxs = MapVATR<Il2CppRGCTXDefinition>(codeGenModule.rgctxs, codeGenModule.rgctxsCount);
+                    var rgctxRanges = MapVATR<Il2CppTokenRangePair>(codeGenModule.rgctxRanges, codeGenModule.rgctxRangesCount);
+                    foreach (var rgctxRange in rgctxRanges)
                     {
-                        var rgctxs = MapVATR<Il2CppRGCTXDefinition>(codeGenModule.rgctxs, codeGenModule.rgctxsCount);
-                        var rgctxRanges = MapVATR<Il2CppTokenRangePair>(codeGenModule.rgctxRanges, codeGenModule.rgctxRangesCount);
-                        foreach (var rgctxRange in rgctxRanges)
-                        {
-                            var rgctxDefs = new Il2CppRGCTXDefinition[rgctxRange.range.length];
-                            Array.Copy(rgctxs, rgctxRange.range.start, rgctxDefs, 0, rgctxRange.range.length);
-                            rgctxsDefDictionary.Add(rgctxRange.token, rgctxDefs);
-                        }
+                        var rgctxDefs = new Il2CppRGCTXDefinition[rgctxRange.range.length];
+                        Array.Copy(rgctxs, rgctxRange.range.start, rgctxDefs, 0, rgctxRange.range.length);
+                        rgctxsDefDictionary.Add(rgctxRange.token, rgctxDefs);
                     }
                 }
             }
-            else
-            {
-                methodPointers = MapVATR<ulong>(pCodeRegistration.methodPointers, pCodeRegistration.methodPointersCount);
-            }
+
             genericMethodTable = MapVATR<Il2CppGenericMethodFunctionsDefinitions>(pMetadataRegistration.genericMethodTable, pMetadataRegistration.genericMethodTableCount);
             methodSpecs = MapVATR<Il2CppMethodSpec>(pMetadataRegistration.methodSpecs, pMetadataRegistration.methodSpecsCount);
             foreach (var table in genericMethodTable)
